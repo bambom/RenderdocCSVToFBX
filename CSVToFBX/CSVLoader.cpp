@@ -19,6 +19,7 @@ void CSVLoader::AssignedOutputObj(const vector<vector<double> >& outputDataObj, 
 	for (int j = 0; j < outputDataObj.at(0).size(); ++j)
 	{
 		objFile.vertices.emplace_back();
+		objFile.color.emplace_back();
 		objFile.texCoords.emplace_back();
 		objFile.texCoords1.emplace_back();
 		objFile.texCoords2.emplace_back();
@@ -26,6 +27,7 @@ void CSVLoader::AssignedOutputObj(const vector<vector<double> >& outputDataObj, 
 		objFile.tangents.emplace_back();
 
 		FbxVector4& vertex = objFile.vertices.back();
+		FbxVector4& color = objFile.color.back();
 		FbxVector4& texCoord = objFile.texCoords.back();
 		FbxVector4& texCoord1 = objFile.texCoords1.back();
 		FbxVector4& texCoord2 = objFile.texCoords2.back();
@@ -42,25 +44,43 @@ void CSVLoader::AssignedOutputObj(const vector<vector<double> >& outputDataObj, 
 				vertex[2] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Pos.w")
 				vertex[3] = outputDataObj.at(i).at(j);
+
 			else if (inputPrefix.at(i) == "Tex.x")
 				texCoord[0] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Tex.y")
 				texCoord[1] = outputDataObj.at(i).at(j);
+
+
 			else if (inputPrefix.at(i) == "Te1.x")
 				texCoord1[0] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Te1.y")
 				texCoord1[1] = outputDataObj.at(i).at(j);
+			else if (inputPrefix.at(i) == "Te1.z")
+				texCoord1[2] = outputDataObj.at(i).at(j);
+			else if (inputPrefix.at(i) == "Te1.w")
+				texCoord1[3] = outputDataObj.at(i).at(j);
+
 			else if (inputPrefix.at(i) == "Te2.x")
 				texCoord2[0] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Te2.y")
 				texCoord2[1] = outputDataObj.at(i).at(j);
+
 			else if (inputPrefix.at(i) == "Nor.x")
 				normal[0] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Nor.y")
 				normal[1] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Nor.z")
 				normal[2] = outputDataObj.at(i).at(j);
-			// TODO 顶点色
+			// 顶点色
+			else if (inputPrefix.at(i) == "Col.x")
+				color[0] = outputDataObj.at(i).at(j);
+			else if (inputPrefix.at(i) == "Col.y")
+				color[1] = outputDataObj.at(i).at(j);
+			else if (inputPrefix.at(i) == "Col.z")
+				color[2] = outputDataObj.at(i).at(j);
+			else if (inputPrefix.at(i) == "Col.w")
+				color[3] = outputDataObj.at(i).at(j);
+
 			else if (inputPrefix.at(i) == "Tan.x")
 				tangent[0] = outputDataObj.at(i).at(j);
 			else if (inputPrefix.at(i) == "Tan.y")
@@ -89,13 +109,21 @@ void CSVLoader::MatchSemanticsPrefix(vector<string>& input, vector<string>& pref
 }
 
 //把一长串buffer字符按分隔符拆分到values中
-void CSVLoader::CleanAndSplit(char buffer[], std::vector<std::string>& values)
+void CSVLoader::CleanAndSplitTitle(char buffer[], std::vector<std::string>& values)
 {
 	char* end = std::remove(buffer, buffer + strlen(buffer), ',');
 	*end = 0;
 	std::istringstream iss(buffer);
 	values = std::vector<std::string>(std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>());
 }
+
+void CSVLoader::CleanAndSplitData(char buffer[], std::vector<std::string>& values)
+{
+	std::replace(buffer, buffer + strlen(buffer), ',', ' ');
+	std::istringstream iss(buffer);
+	values = std::vector<std::string>(std::istream_iterator<std::string>{iss}, std::istream_iterator<std::string>());
+}
+
 
 //把用户输入，拆分为语义部分sem和对应值部分，分别保存在数组中，例：pos.x(值)，POSITION.x(语义)
 void const CSVLoader::GetSemanticName(const vector<char*>& src, vector<string> &sem, vector<string> &var)
@@ -119,9 +147,10 @@ CSVGeometry& CSVLoader::Load(const char* strCSVPath)
 {
 	vector<int> semanticsTag;									//glsl中顶点坐标可能是四维的，这里给出最大数组的标记位，4*4*4*4
 	// TODO 这里不好，改之
-	semanticsTag.assign(24, -1);									//需要输出的最大语义数量的标签，全部初始化为-1，需要输出就置为1,最大3*pos、3*normal、4*tangent、2*uv
+	semanticsTag.assign(28, -1);									//需要输出的最大语义数量的标签，全部初始化为-1，需要输出就置为1,最大3*pos、3*normal、4*tangent、2*uv、4*color
 	vector<string> semanticsPrefix = {							//最多字符串的前缀
 									   "Pos.x","Pos.y","Pos.z","Pos.w",
+									   "Col.x","Col.y","Col.z","Col.w",
 									   "Tex.x","Tex.y","Tex.z","Tex.w",
 									   "Te1.x","Te1.y","Te1.z","Te1.w",
 									   "Te2.x","Te2.y","Te2.z","Te2.w",
@@ -142,7 +171,7 @@ CSVGeometry& CSVLoader::Load(const char* strCSVPath)
 	ifstream fIn(strCSVPath);
 	fIn.getline(buffer, sizeof(buffer));
 	vector<string> CsvTittleName;
-	CleanAndSplit(buffer, CsvTittleName);//分离buffer中的内容，把语义名称对应在CsvTittleName中
+	CleanAndSplitTitle(buffer, CsvTittleName);//分离buffer中的内容，把语义名称对应在CsvTittleName中
 
 	//写一个循环，在semanticsTag中值为1的就是需要读取的语义所在的列的值，
 	//需要定义几个vector?我需要在csv中输出的索引
@@ -152,7 +181,7 @@ CSVGeometry& CSVLoader::Load(const char* strCSVPath)
 		if (strlen(buffer) == 0)
 			break;
 		std::vector<std::string> values;
-		CleanAndSplit(buffer, values);      //分离buffer
+		CleanAndSplitData(buffer, values);      //分离buffer
 
 		//使用三层循环保证用户输入的语义顺序是无序的
 		for (int i = 0; i < semanticsTag.size(); ++i)

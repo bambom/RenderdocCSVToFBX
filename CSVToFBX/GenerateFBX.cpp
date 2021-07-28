@@ -14,7 +14,8 @@ enum Layer
 	TANGENT,
 	UV,
 	UV1,
-	UV2
+	//UV2,
+	COLOR,
 };
 
 
@@ -76,7 +77,8 @@ FbxNode* CreateMesh(FbxScene* pScene, const char* pName, const CSVGeometry& cSVG
 	FbxLayer* lNormalLayer = lMesh->GetLayer((int)Layer::NORMAL);
 	if (lNormalLayer == NULL)
 	{
-		lMesh->CreateLayer();
+		int index = lMesh->CreateLayer();
+		FBXSDK_printf("normal:" + index);
 		lNormalLayer = lMesh->GetLayer((int)Layer::NORMAL);
 	}
 
@@ -98,7 +100,8 @@ FbxNode* CreateMesh(FbxScene* pScene, const char* pName, const CSVGeometry& cSVG
 	FbxLayer* lTangentLayer = lMesh->GetLayer((int)Layer::TANGENT);
 	if (lTangentLayer == NULL)
 	{
-		lMesh->CreateLayer();
+		int index = lMesh->CreateLayer();
+		FBXSDK_printf("tangent:" + index);
 		lTangentLayer = lMesh->GetLayer((int)Layer::TANGENT);
 	}
 
@@ -117,7 +120,8 @@ FbxNode* CreateMesh(FbxScene* pScene, const char* pName, const CSVGeometry& cSVG
 	FbxLayer* lUVLayer = lMesh->GetLayer((int)Layer::UV);
 	if (lUVLayer == NULL)
 	{
-		lMesh->CreateLayer();
+		int index = lMesh->CreateLayer();
+		FBXSDK_printf("uv:"+index);
 		lUVLayer = lMesh->GetLayer((int)Layer::UV);
 	}
 
@@ -137,7 +141,8 @@ FbxNode* CreateMesh(FbxScene* pScene, const char* pName, const CSVGeometry& cSVG
 	FbxLayer* lUV1Layer = lMesh->GetLayer((int)Layer::UV1);
 	if (lUV1Layer == NULL)
 	{
-		lMesh->CreateLayer();
+		int index = lMesh->CreateLayer();
+		FBXSDK_printf("uv1:" + index);
 		lUV1Layer = lMesh->GetLayer((int)Layer::UV1);
 	}
 
@@ -153,11 +158,25 @@ FbxNode* CreateMesh(FbxScene* pScene, const char* pName, const CSVGeometry& cSVG
 
 	lUV1Layer->SetUVs(lLayerElementUV1);
 
-
 	// TODO 添加uv2
 
 	// TODO 添加顶点色
+	FbxLayer* lColorLayer = lMesh->GetLayer((int)Layer::COLOR);
+	if (lColorLayer == NULL)
+	{
+		int index = lMesh->CreateLayer();
+		FBXSDK_printf("color:" + index);
+		lColorLayer = lMesh->GetLayer((int)Layer::COLOR);
+	}
 
+	FbxLayerElementVertexColor* lLayerElementVertexColor = FbxLayerElementVertexColor::Create(lMesh, "COLOR");
+	lColorLayer->SetVertexColors(lLayerElementVertexColor);
+
+	for (auto iter = cSVGeometry.color.begin(); iter != cSVGeometry.color.end(); iter++)
+	{
+		lLayerElementVertexColor->GetDirectArray().Add(*iter);
+	}
+	lColorLayer->SetVertexColors(lLayerElementVertexColor);
 
 
 	FbxNode* lNode = FbxNode::Create(pScene, pName);
